@@ -95,7 +95,8 @@ function Get-TermObject {
             $count++
             if ($count -lt $childTerms.Count) {
                 $sb.AppendLine(",") | Out-Null
-            } else {
+            }
+            else {
                 $sb.AppendLine("") | Out-Null
             }
         }
@@ -109,7 +110,7 @@ function Get-TermObject {
         $sb.AppendLine("${innerIndent}Labels = @($labelJoined);") | Out-Null
     }
 
-    $sb.Append("$indent}")
+    $sb.Append("$indent}") | Out-Null
     return $sb.ToString()
 }
 
@@ -128,7 +129,7 @@ try {
     # The TermSet object has a "Terms" property which are the root terms.
     # We need to make sure we load the full tree.
     
-    $termSet = Get-PnPTermSet -Identity $TermSetName -Includes Terms, Terms.Terms, Terms.Terms.Terms, Terms.Terms.Terms.Terms, Terms.Terms.Terms.Terms.Terms
+    $termSet = Get-PnPTermSet -Identity $TermSetName
     # Note: The Includes depth might be limited. A better way is to load recursively or use the flat list and build the tree.
     # But for a script, let's try to traverse.
     # If the tree is very deep, explicit includes might fail.
@@ -185,7 +186,8 @@ try {
         $count++
         if ($count -lt $rootTerms.Count) {
             $sb.AppendLine(",") | Out-Null
-        } else {
+        }
+        else {
             $sb.AppendLine("") | Out-Null
         }
     }
@@ -199,6 +201,7 @@ try {
     $sb.ToString() | Out-File -FilePath $OutputFile -Encoding UTF8
     Write-Host "Export complete. File saved to: $OutputFile" -ForegroundColor Green
 
-} catch {
+}
+catch {
     Write-Error "An error occurred: $_"
 }

@@ -26,7 +26,7 @@
     .\Sync-TermSet.ps1 -InputFile "SSATermSet.psd1" -SiteUrl "https://contoso.sharepoint.com/sites/intranet" -TermGroupName "Organizational Hierarchy" -WhatIf
 #>
 
-[CmdletBinding(SupportsShouldProcess = $true)]
+[CmdletBinding()]
 param (
     [Parameter(Mandatory = $true)]
     [string]$InputFile,
@@ -47,6 +47,12 @@ function Write-Log {
         [string]$Color = "White"
     )
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] $Message" -ForegroundColor $Color
+}
+
+function Import-TermSetData {
+    param([string]$Path)
+    $content = Get-Content -Path $Path -Raw
+    Invoke-Expression $content
 }
 
 function Sync-Terms {
@@ -226,7 +232,8 @@ function Sync-Terms {
 # Main Execution
 try {
     Write-Log "Reading Input File: $InputFile"
-    $data = Import-PowerShellDataFile -Path $InputFile
+    Write-Log "Reading Input File: $InputFile"
+    $data = Import-TermSetData -Path $InputFile
 
     Write-Log "Connecting to SharePoint: $SiteUrl"
     Connect-PnPOnline -Url $SiteUrl -Interactive
