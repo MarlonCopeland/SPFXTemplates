@@ -26,21 +26,22 @@
     .\Sync-TermSet.ps1 -InputFile "SSATermSet.psd1" -SiteUrl "https://contoso.sharepoint.com/sites/intranet" -TermGroupName "Organizational Hierarchy" -WhatIf
 #>
 
+
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory = $true)]
-    [string]$InputFile,
+    [Parameter(Mandatory = $false)]
+    [string]$InputFile= "TermSetExport.psd1",
 
-    [Parameter(Mandatory = $true)]
-    [string]$SiteUrl,
+    [Parameter(Mandatory = $false)]
+    [string]$SiteUrl= "https://socialsecurityint-admin.sharepoint.com",
 
-    [Parameter(Mandatory = $true)]
-    [string]$ClientId,
+    [Parameter(Mandatory = $false)]
+    [string]$ClientId = "f293fa79-ea1b-46d6-9cf3-9971089ea25a",
 
-    [Parameter(Mandatory = $true)]
-    [string]$ClientSecret,
+    [Parameter(Mandatory = $false)]
+    [string]$ClientSecret = "q6QRBGl7rzVGm+kReh+AvQGinzl6xXuVGqsJCOLqsTA=",
 
-    [switch]$WhatIf
+    [switch]$WhatIf = $false
 )
 
 # Helper to log messages
@@ -71,11 +72,15 @@ function Sync-Terms {
     $existingTerms = @()
     if ($ParentEntity.GetType().Name -match "TermSet") {
         # It's a TermSet
-        $existingTerms = Get-PnPTerm -TermSet $ParentEntity.Id -TermStore $TermStoreId -Recursive:$false
+        $existingTerms = Get-PnPTerm -TermSet $ParentEntity.Id -Recursive:$false -TermGroup "Enterprise Term Sets"
+       # $existingTerms = Get-PnPTerm -TermSet $ParentEntity.Id -TermStore $TermStoreId -Recursive:$false -TermGroup "Enterprise Term Sets"
+
     }
     else {
         # It's a Term
-        $existingTerms = Get-PnPTerm -Term $ParentEntity.Id -TermSet $TermSetId -TermStore $TermStoreId -Recursive:$false
+        $existingTerms = Get-PnPTerm -Identity $ParentEntity.Id -TermSet $TermSetId -Recursive:$false -TermGroup "Enterprise Term Sets"
+       #$existingTerms = Get-PnPTerm -Term $ParentEntity.Id -TermSet $TermSetId -TermStore $TermStoreId -Recursive:$false -TermGroup "Enterprise Term Sets"
+
     }
 
     # Create a lookup for existing terms by ID
@@ -106,7 +111,7 @@ function Sync-Terms {
                 }
                 else {
                     Write-Log "  Updating Name to '$sourceName'" -Color Yellow
-                    Set-PnPTerm -Identity $targetTerm.Id -Name $sourceName -TermStore $TermStoreId
+                    Set-PnPTerm -Identity $targetTerm.Id -Name $sourceName -TermStore $TermStoreId -TermGroup "Enterprise Term Sets"
                 }
             }
 
@@ -117,7 +122,7 @@ function Sync-Terms {
                 }
                 else {
                     Write-Log "  Updating Description" -Color Yellow
-                    Set-PnPTerm -Identity $targetTerm.Id -Description $sourceDesc -TermStore $TermStoreId
+                    Set-PnPTerm -Identity $targetTerm.Id -Description $sourceDesc -TermStore $TermStoreId -TermGroup "Enterprise Term Sets"
                 }
             }
 
@@ -201,7 +206,9 @@ function Sync-Terms {
             }
             else {
                 Write-Log "  Creating Term: '$sourceName' ($sourceId)" -Color Green
-                $newTerm = New-PnPTerm -TermSet $TermSetId -TermStore $TermStoreId -ParentTerm $ParentEntity.Id -Name $sourceName -Id $sourceId -Description $sourceDesc
+                $newTerm = New-PnPTerm -TermSet $TermSetId -TermGroup "Enterprise Term Sets"  -Name $sourceName -Id $sourceId -Description $sourceDesc
+                #New-PnPTerm -TermSet "Departments" -TermGroup "Corporate" -Name "Finance"
+
                 
                 # Add Labels
                 foreach ($label in $sourceLabels) {
@@ -227,7 +234,7 @@ function Sync-Terms {
         }
         else {
             Write-Log "  DELETING Term: '$($termToDelete.Name)' ($termId)" -Color Red
-            Remove-PnPTerm -Identity $termToDelete.Id -TermStore $TermStoreId -Force
+            #Remove-PnPTerm -Identity $termToDelete.Id -TermStore $TermStoreId -Force
         }
     }
 }
@@ -239,29 +246,14 @@ try {
     $data = Import-TermSetData -Path $InputFile
 
     Write-Log "Connecting to SharePoint: $SiteUrl"
-    Connect-PnPOnline -Url $SiteUrl -ClientId $ClientId -ClientSecret $ClientSecret
+    Connect-PnPOnline -Url $SiteUrl -ClientId $ClientId -ClientSecret $ClientSecret -WarningAction Ignore
 
-    $termStore = Get-PnPTermStore
-    if (-not $termStore) {
-        Write-Error "Could not access Term Store."
-        exit
-    }
-    
-    # Hardcoded Names
-    $TermGroupName = "Enterprise Term Sets"
-    $TermSetName = "Organizational Hierarchy"
-
-    # Get Term Group
-    Write-Log "Looking for Term Group: $TermGroupName"
-    $group = Get-PnPTermGroup -Identity $TermGroupName -TermStore $termStore.Id -ErrorAction SilentlyContinue
-    if (-not $group) {
-        Write-Error "Term Group '$TermGroupName' does not exist. Aborting."
-        return
-    }
 
     # Get Term Set
     Write-Log "Looking for Term Set: $TermSetName"
-    $termSet = Get-PnPTermSet -Identity $TermSetName -TermGroup $group.Name -TermStore $termStore.Id -ErrorAction SilentlyContinue
+    $termSet = Get-PnPTermSet -Identity "Organizational Hierarchy" -TermGroup "Enterprise Term Sets"
+
+    #$termSet = Get-PnPTermSet -Identity $TermSetName -TermGroup $group.Name -TermStore $termStore.Id -ErrorAction SilentlyContinue
     
     if (-not $termSet) {
         Write-Error "Term Set '$TermSetName' does not exist in Group '$TermGroupName'. Aborting."
